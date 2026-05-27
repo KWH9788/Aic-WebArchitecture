@@ -1,4 +1,5 @@
 import sys
+from threading import Lock
 from time import perf_counter
 import numpy as np
 import pandas as pd
@@ -7,6 +8,7 @@ sys.path.insert(0, "/app")
 
 # aic_pipeline.py must be copied to /app (container root) — see Dockerfile
 from aic_pipeline import (
+    DEFAULT_SINGLE_ANALYSIS_NORMALIZATION_SCALES,
     EmbeddingBackend,
     compute_PI,
     compute_UI_OI,
@@ -15,6 +17,7 @@ from aic_pipeline import (
 )
 
 _backend = None  # module-level singleton; loaded once at startup
+_backend_lock = Lock()
 
 DEFAULT_KEYWORDS = [
     "however", "although", "because", "why", "how", "compare",
@@ -25,16 +28,20 @@ DEFAULT_KEYWORDS = [
 
 def preload_model():
     global _backend
-    preferred_backend = EmbeddingBackend(prefer="sbert", sbert_model="paraphrase-multilingual-mpnet-base-v2")
-    try:
-        preferred_backend.fit(["warmup text for initialization"])
-        _backend = preferred_backend
-        print("[pipeline] Embedding backend initialized: sbert", flush=True)
-    except Exception as exc:
-        fallback_backend = EmbeddingBackend(prefer="tfidf")
-        fallback_backend.fit(["warmup text for initialization"])
-        _backend = fallback_backend
-        print(f"[pipeline] Embedding fallback activated: tfidf ({exc})", flush=True)
+    with _backend_lock:
+        if _backend is not None:
+            return
+
+        preferred_backend = EmbeddingBackend(prefer="sbert", sbert_model="paraphrase-multilingual-mpnet-base-v2")
+        try:
+            preferred_backend.fit(["warmup text for initialization"])
+            _backend = preferred_backend
+            print("[pipeline] Embedding backend initialized: sbert", flush=True)
+        except Exception as exc:
+            fallback_backend = EmbeddingBackend(prefer="tfidf")
+            fallback_backend.fit(["warmup text for initialization"])
+            _backend = fallback_backend
+            print(f"[pipeline] Embedding fallback activated: tfidf ({exc})", flush=True)
 
 
 def run_analysis(payload: dict) -> dict:
@@ -73,7 +80,13 @@ def run_analysis(payload: dict) -> dict:
         record_step("Preprocess", perf_counter() - preprocess_start)
 
         pi_start = perf_counter()
-        df = compute_PI(df, keywords, weights=pi_weights)
+        df = compute_PI(
+            df,
+            keywords,
+            weights=pi_weights,
+            normalization="saturating_ratio",
+            normalization_scales=DEFAULT_SINGLE_ANALYSIS_NORMALIZATION_SCALES,
+        )
         record_step("PI", perf_counter() - pi_start)
 
         pipeline_cfg = {
@@ -81,9 +94,13 @@ def run_analysis(payload: dict) -> dict:
                 "topic_score_alpha": cfg.get("topic_score_alpha", 1.0),
                 "topic_score_beta": cfg.get("topic_score_beta", 1.0),
                 "min_course_samples": 1,
+                "normalization": "saturating_ratio",
+                "normalization_scales": DEFAULT_SINGLE_ANALYSIS_NORMALIZATION_SCALES,
+                "reuse_fitted_sbert": True,
             }
         }
-        df = compute_UI_OI(df, _backend, pipeline_cfg)
+        with _backend_lock:
+            df = compute_UI_OI(df, _backend, pipeline_cfg)
         ui_oi_timings = df.attrs.get("pipeline_timings", {})
         record_step("Embedding", ui_oi_timings.get("Embedding", 0.0))
         record_step("UI/OI", ui_oi_timings.get("UI/OI", 0.0))

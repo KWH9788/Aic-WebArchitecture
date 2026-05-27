@@ -1,0 +1,94 @@
+diff --git a/LOG.md b/LOG.md
+index 4255be9..4928b13 100644
+--- a/LOG.md
++++ b/LOG.md
+@@ -26,6 +26,7 @@
+ 
+ | 영역 | 요약 | 확인 | 후속 작업 |
+ | --- | --- | --- | --- |
++| Pipeline | 단건 `/analyze` 경로에서 preload된 singleton SBERT backend를 재사용하도록 수정했습니다. `compute_UI_OI`는 `reuse_fitted_sbert`가 켜져 있고 SBERT 모델이 이미 로드된 경우 `backend.fit()`을 건너뛰며, `pipeline_runner`는 embedding backend 접근을 lock으로 보호해 요청 중 모델/벡터라이저 상태 변경을 직렬화합니다. TF-IDF fallback은 요청 corpus 기준 fit을 유지합니다. 완료된 TODO 항목도 제거했습니다. | `python -m compileall aic-pipeline\app aic-pipeline\aic_pipeline.py` 성공. fake SBERT backend 스모크에서 `fit_calls=0` 확인. `docker compose up -d --build pipeline` 후 startup에서 SBERT preload 1회 확인. pipeline 컨테이너 내부에서 `/analyze` 8회 반복 호출 성공, 앞 2회 제외 6회 기준 `p50=0.093s`, `p95=0.097s`, `avg=0.093s`, 모든 응답 `embedding_backend=sbert` 확인. 로그에서 반복 호출 중 SBERT load 로그 재발생 없음 확인. | None. |
+ | Warehouse/ELT/Ops | ELT health check 실패 시 Discord webhook으로 알림을 보내는 wrapper `scripts/check_elt_health_and_notify.sh`를 추가했습니다. 기존 `check_elt_health.sh`는 순수 상태 판정으로 유지하고, wrapper가 실패 시에만 `DISCORD_WEBHOOK_URL`로 Discord 알림을 시도합니다. webhook이 없거나 `curl`이 없으면 알림만 건너뛰고 원래 health check exit code를 유지합니다. `.env.example`, README, warehouse 검증 문서, EC2 배포 문서에는 변수 이름과 cron 예시만 추가했습니다. | `bash -n scripts/check_elt_health_and_notify.sh` 성공. 정상 health 상태에서 `bash scripts/check_elt_health_and_notify.sh` 실행 시 exit code 0 확인. `AIC_ELT_MAX_SUCCESS_AGE_HOURS=0.001 bash scripts/check_elt_health_and_notify.sh` 실행 시 freshness 실패 메시지, `DISCORD_WEBHOOK_URL` 미설정으로 알림 건너뜀, exit code 1 확인. 실제 Discord 전송은 webhook 값을 기록하지 않기 위해 수행하지 않았습니다. | 실제 EC2 `.env`에 `DISCORD_WEBHOOK_URL`을 설정한 뒤 알림 수신 채널에서 한 번 수동 실패 테스트를 수행합니다. |
+ | Warehouse/ELT/Ops | `elt_run_history` 기반 ELT health check 스크립트 `scripts/check_elt_health.sh`를 추가했습니다. 스크립트는 warehouse 컨테이너의 `psql`로 가장 최근 run 상태와 마지막 성공 run 시각을 조회하고, 최신 run이 `success`이며 마지막 성공이 기본 25시간 이내일 때만 exit code 0을 반환합니다. EC2 cron에서 ELT 실행 30분 후 health check를 돌리는 예시와 로그 확인 절차를 문서화했습니다. | Git Bash에서 `bash -n scripts/check_elt_health.sh` 성공. `bash scripts/check_elt_health.sh` 실행 시 `latest run is success and last success is 0.14h old`로 exit code 0 확인. `AIC_ELT_MAX_SUCCESS_AGE_HOURS=0.001 bash scripts/check_elt_health.sh` 실행 시 freshness 실패 메시지와 exit code 1 확인. | row count 이상 탐지와 외부 알림은 다음 단계로 남겼습니다. |
+ | Warehouse/ELT/Ops | 배포 서버 호스트 cron에서 호출할 `scripts/run_elt_once.sh`를 추가했습니다. 스크립트는 repo root를 찾아 `.env` 존재를 확인하고 `docker compose run --rm elt`를 실행하며, 호스트 로그를 `logs/elt/elt-YYYYMMDDTHHMMSSZ.log`에 남깁니다. EC2 prod compose 실행, cron 등록/확인/해제, 로그 확인, warehouse 이력 조회 절차를 문서화했습니다. | Git Bash에서 `bash -n scripts/run_elt_once.sh` 성공. `bash scripts/run_elt_once.sh` 로컬 1회 실행 성공, `logs/elt/elt-20260527T064516Z.log` 생성 확인. warehouse `elt_run_history` 최신 이력에서 `run_id=2`, `status=success`, `raw_submissions=256`, `error_message=NULL` 확인. | 외부 알림은 포함하지 않았습니다. 다음 단계에서 실패 감지와 알림 채널을 결정합니다. |
+diff --git a/aic-pipeline/aic_pipeline.py b/aic-pipeline/aic_pipeline.py
+index 03c945c..15be5e2 100644
+--- a/aic-pipeline/aic_pipeline.py
++++ b/aic-pipeline/aic_pipeline.py
+@@ -353,7 +353,14 @@ def compute_UI_OI(df: pd.DataFrame, backend: EmbeddingBackend, cfg) -> pd.DataFr
+     # 백엔드 fit
+     embedding_start = time.perf_counter()
+     corpus = before + essay
+-    backend.fit(corpus)
++    reuse_fitted_sbert = cfg["ui_oi"].get("reuse_fitted_sbert", False)
++    should_fit_backend = not (
++        reuse_fitted_sbert
++        and backend.kind == "sbert"
++        and backend.model is not None
++    )
++    if should_fit_backend:
++        backend.fit(corpus)
+     
+     # 임베딩 변환
+     E_before = backend.transform(before)
+diff --git a/aic-pipeline/app/pipeline_runner.py b/aic-pipeline/app/pipeline_runner.py
+index 89b1603..b13bf90 100644
+--- a/aic-pipeline/app/pipeline_runner.py
++++ b/aic-pipeline/app/pipeline_runner.py
+@@ -1,4 +1,5 @@
+ import sys
++from threading import Lock
+ from time import perf_counter
+ import numpy as np
+ import pandas as pd
+@@ -15,6 +16,7 @@ from aic_pipeline import (
+ )
+ 
+ _backend = None  # module-level singleton; loaded once at startup
++_backend_lock = Lock()
+ 
+ DEFAULT_KEYWORDS = [
+     "however", "although", "because", "why", "how", "compare",
+@@ -25,16 +27,20 @@ DEFAULT_KEYWORDS = [
+ 
+ def preload_model():
+     global _backend
+-    preferred_backend = EmbeddingBackend(prefer="sbert", sbert_model="paraphrase-multilingual-mpnet-base-v2")
+-    try:
+-        preferred_backend.fit(["warmup text for initialization"])
+-        _backend = preferred_backend
+-        print("[pipeline] Embedding backend initialized: sbert", flush=True)
+-    except Exception as exc:
+-        fallback_backend = EmbeddingBackend(prefer="tfidf")
+-        fallback_backend.fit(["warmup text for initialization"])
+-        _backend = fallback_backend
+-        print(f"[pipeline] Embedding fallback activated: tfidf ({exc})", flush=True)
++    with _backend_lock:
++        if _backend is not None:
++            return
++
++        preferred_backend = EmbeddingBackend(prefer="sbert", sbert_model="paraphrase-multilingual-mpnet-base-v2")
++        try:
++            preferred_backend.fit(["warmup text for initialization"])
++            _backend = preferred_backend
++            print("[pipeline] Embedding backend initialized: sbert", flush=True)
++        except Exception as exc:
++            fallback_backend = EmbeddingBackend(prefer="tfidf")
++            fallback_backend.fit(["warmup text for initialization"])
++            _backend = fallback_backend
++            print(f"[pipeline] Embedding fallback activated: tfidf ({exc})", flush=True)
+ 
+ 
+ def run_analysis(payload: dict) -> dict:
+@@ -81,9 +87,11 @@ def run_analysis(payload: dict) -> dict:
+                 "topic_score_alpha": cfg.get("topic_score_alpha", 1.0),
+                 "topic_score_beta": cfg.get("topic_score_beta", 1.0),
+                 "min_course_samples": 1,
++                "reuse_fitted_sbert": True,
+             }
+         }
+-        df = compute_UI_OI(df, _backend, pipeline_cfg)
++        with _backend_lock:
++            df = compute_UI_OI(df, _backend, pipeline_cfg)
+         ui_oi_timings = df.attrs.get("pipeline_timings", {})
+         record_step("Embedding", ui_oi_timings.get("Embedding", 0.0))
+         record_step("UI/OI", ui_oi_timings.get("UI/OI", 0.0))

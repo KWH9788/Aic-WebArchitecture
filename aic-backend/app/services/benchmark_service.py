@@ -161,6 +161,7 @@ async def compare_benchmark_runs(db: AsyncSession, baseline_run_id: str, optimiz
             baseline.stage_runtime_totals or {},
             optimized.stage_runtime_totals or {},
         ),
+        "score_delta": _build_score_delta_summary(baseline_items, optimized_items),
         "outliers": _build_runtime_outliers(baseline_items, optimized_items),
     }
 
@@ -495,6 +496,93 @@ def _build_runtime_outliers(
 
     outliers.sort(key=lambda item: abs(item["delta_runtime_sec"] or 0), reverse=True)
     return outliers[:limit]
+
+
+def _build_score_delta_summary(
+    baseline_items: list[BenchmarkRunItem],
+    optimized_items: list[BenchmarkRunItem],
+    limit: int = 10,
+) -> dict:
+    baseline_by_submission = {
+        item.submission_id: item
+        for item in baseline_items
+        if item.submission_id is not None and not item.is_warmup and item.status == "completed"
+    }
+    optimized_by_submission = {
+        item.submission_id: item
+        for item in optimized_items
+        if item.submission_id is not None and not item.is_warmup and item.status == "completed"
+    }
+    common_submission_ids = sorted(set(baseline_by_submission) & set(optimized_by_submission))
+    metric_names = ("pi", "ui", "oi", "aic", "topic")
+    deltas_by_metric = {name: [] for name in metric_names}
+    outliers = []
+
+    for submission_id in common_submission_ids:
+        baseline_scores = _snapshot_scores(baseline_by_submission[submission_id])
+        optimized_scores = _snapshot_scores(optimized_by_submission[submission_id])
+        submission_deltas = {}
+        max_abs_delta = 0.0
+
+        for metric in metric_names:
+            baseline_value = _to_float_or_none(baseline_scores.get(metric))
+            optimized_value = _to_float_or_none(optimized_scores.get(metric))
+            if baseline_value is None or optimized_value is None:
+                continue
+            delta = round(optimized_value - baseline_value, 3)
+            deltas_by_metric[metric].append(delta)
+            submission_deltas[metric] = {
+                "baseline": baseline_value,
+                "optimized": optimized_value,
+                "delta": delta,
+            }
+            max_abs_delta = max(max_abs_delta, abs(delta))
+
+        if submission_deltas:
+            outliers.append({
+                "submission_id": submission_id,
+                "max_abs_delta": round(max_abs_delta, 3),
+                "deltas": submission_deltas,
+            })
+
+    outliers.sort(key=lambda item: item["max_abs_delta"], reverse=True)
+
+    return {
+        "common_submission_count": len(common_submission_ids),
+        "metrics": {
+            metric: _summarize_score_deltas(deltas)
+            for metric, deltas in deltas_by_metric.items()
+        },
+        "outliers": outliers[:limit],
+    }
+
+
+def _snapshot_scores(item: BenchmarkRunItem) -> dict:
+    snapshot = item.metric_snapshot or {}
+    scores = snapshot.get("scores") if isinstance(snapshot, dict) else {}
+    return scores if isinstance(scores, dict) else {}
+
+
+def _summarize_score_deltas(deltas: list[float]) -> dict:
+    if not deltas:
+        return {
+            "count": 0,
+            "avg_delta": None,
+            "avg_abs_delta": None,
+            "max_abs_delta": None,
+            "within_1pt_count": 0,
+            "within_3pt_count": 0,
+        }
+
+    abs_deltas = [abs(delta) for delta in deltas]
+    return {
+        "count": len(deltas),
+        "avg_delta": round(sum(deltas) / len(deltas), 3),
+        "avg_abs_delta": round(sum(abs_deltas) / len(abs_deltas), 3),
+        "max_abs_delta": round(max(abs_deltas), 3),
+        "within_1pt_count": sum(1 for delta in abs_deltas if delta <= 1.0),
+        "within_3pt_count": sum(1 for delta in abs_deltas if delta <= 3.0),
+    }
 
 
 def _to_float_or_none(value) -> float | None:

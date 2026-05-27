@@ -1,5 +1,6 @@
 ﻿CREATE DATABASE IF NOT EXISTS aic_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE aic_db;
+SET NAMES utf8mb4;
 
 CREATE TABLE users (
     id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

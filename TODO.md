@@ -30,11 +30,15 @@
 
 ## 참고 기준
 
-- 목표: 기존 `backend -> operational db` 흐름은 유지하면서 별도 `warehouse` DB와 일회성 ELT 작업을 추가합니다.
-- 아키텍처 범위: 백엔드는 운영 DB만 사용하고, ELT 작업이 운영 DB에서 데이터를 추출해 warehouse에 적재한 뒤 분석용 raw/staging/mart 테이블로 변환합니다.
-- 실행 방식: ELT는 `docker compose run --rm elt` 형태의 일회성 서비스로 실행 가능해야 합니다.
-- 1차 구현 범위: 교사/관리자 API 조회 경로는 warehouse로 전환하지 않고, warehouse 적재와 변환이 독립적으로 검증 가능하면 완료로 봅니다.
-- 구현 원칙: 운영 DB 스키마와 기존 API 계약을 불필요하게 변경하지 않으며, 비밀값은 `.env.example`에 이름만 추가하고 실제 값은 기록하지 않습니다.
+- 목표: 단건 `/analyze` 경로에서 `minmax_norm()`으로 PI/UI/OI/AIC가 0으로 붕괴하는 문제를 해결하고, 같은 정규화 기준으로 최적화 전후 benchmark를 비교합니다.
+- 정규화 범위: batch CLI는 기존 min-max 정규화를 유지하고, 단건 `/analyze` 경로에만 saturating ratio 정규화를 적용합니다.
+- saturating ratio 기본식: `normalized = value / (value + scale)`을 사용하고 결과를 0~1 범위로 유지합니다.
+- saturating ratio scale 기본값: `pi_depth_tokens=100`, `pi_avg_sent_len_raw=20`, `pi_ttr_raw=0.5`, `ui_raw=0.2`, `oi_raw=0.125`로 시작합니다.
+- `ui_raw`는 기존 `ui_distance * ui_newinfo_ratio * topic_score`를 사용한 뒤 saturating ratio로 정규화합니다.
+- `oi_raw`는 기존 `(1 - topic_score) * topic_score`를 사용한 뒤 saturating ratio로 정규화합니다.
+- 비교 원칙: 정규화 수정 효과와 SBERT 재로드 제거 효과를 분리해 측정합니다.
+- benchmark label: baseline은 `baseline-normalized-no-sbert-cache`, optimized는 `optimized-normalized-sbert-cache`를 사용합니다.
+- 완료 기준: baseline/optimized benchmark run이 모두 저장되고, compare에서 runtime은 크게 감소하며 `metric_snapshot` 점수 delta는 거의 없어야 합니다.
 
 ## 작업 목록
 
@@ -43,19 +47,10 @@
 
 ## 결정된 방향
 
-- TODO는 ELT 아키텍처 1차 구현 중심으로 관리합니다.
-- ELT 아키텍처 1차 구현은 `backend -> operational db` 기존 흐름을 유지하고, 별도 `warehouse` DB와 ELT 작업을 추가해 raw/staging/mart 테이블을 생성하는 범위로 진행합니다.
-- 1차 ELT 구현에서는 교사/관리자 분석 API를 warehouse 조회로 전환하지 않고, warehouse 적재 및 변환이 독립적으로 검증 가능하면 완료로 봅니다.
-- ELT 실행 방식은 `docker compose run --rm elt` 형태의 일회성 서비스로 고정합니다.
-- warehouse는 향후 BI, 관리자 분석, 배치 리포팅을 위한 분석 저장소로 두며, 1차 구현에서는 기존 사용자 화면의 데이터 소스가 아닙니다.
-- 운영 DB는 사용자 요청 처리와 권한/영속성의 원천으로 유지하고, warehouse는 운영 DB에서 파생된 분석용 데이터 저장소로 취급합니다.
-- warehouse 적재 방식은 전체 truncate 재적재가 아니라 primary key 또는 natural key 기준 upsert로 구현합니다.
-- mart 집계 범위는 학생별 과제 분석, 과제별 제출/점수 요약, 클래스별 분석 요약을 1차 범위로 둡니다.
-- 1차 mart 구현은 구조 증명용으로 작게 유지하고, 기존 teacher/admin analytics API 전환은 하지 않습니다.
-- 최소 mart 테이블은 `mart_student_assignment_metrics`, `mart_assignment_summary`, `mart_class_summary` 세 개로 고정합니다.
-- raw 테이블 upsert는 운영 DB의 원본 `id`를 보존한 `source_*_id` 기준으로 수행하고, staging/mart는 학생-과제, 과제, 클래스 단위 조합 key로 갱신합니다.
-- PostgreSQL warehouse의 실제 Docker 기동, 적재, 조회 검증은 완료되었고 세부 결과는 `LOG.md`에 기록합니다.
-- 다음 목표는 warehouse를 사용자 화면의 데이터 소스로 전환하기 전에, 일회성 ELT 작업의 반복 실행 신뢰성과 운영자 검증 흐름을 안정화하는 것입니다.
+- TODO는 프로젝트 전체 작업 목록으로 관리합니다.
+- 완료된 작업은 `LOG.md`에 기록하고 이 파일에서는 제거합니다.
+- 단건 scoring 정규화 수정과 SBERT 재로드 제거 최적화는 benchmark 비교에서 서로 섞이지 않도록 단계별로 분리합니다.
+- 단건 `/analyze`는 saturating ratio 정규화를 사용하고, batch CLI는 기존 min-max 정규화를 유지합니다.
 
 ## 열린 질문
 

@@ -93,4 +93,5 @@ class BenchmarkComparison(BaseModel):
     fallback_rate: BenchmarkMetricComparison
     data_health: dict[str, BenchmarkMetricComparison]
     stage_runtime: dict[str, BenchmarkMetricComparison]
+    score_delta: dict[str, Any] = Field(default_factory=dict)
     outliers: list[BenchmarkComparisonOutlier] = Field(default_factory=list)

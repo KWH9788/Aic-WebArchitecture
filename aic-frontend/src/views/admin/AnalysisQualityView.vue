@@ -100,6 +100,19 @@ const selectedStageSteps = computed(() => {
   const totals = selectedRun.value?.stage_runtime_totals || {}
   return Object.entries(totals).map(([name, seconds]) => ({ name, seconds, status: 'success' }))
 })
+const scoreDeltaRows = computed(() => {
+  const metrics = store.comparison?.score_delta?.metrics || {}
+  return ['aic', 'pi', 'ui', 'oi', 'topic']
+    .filter((name) => metrics[name])
+    .map((name) => ({
+      name: name.toUpperCase(),
+      count: metrics[name].count || 0,
+      avgAbs: formatScoreDelta(metrics[name].avg_abs_delta),
+      maxAbs: formatScoreDelta(metrics[name].max_abs_delta),
+      within1: formatCount(metrics[name].within_1pt_count, metrics[name].count),
+      within3: formatCount(metrics[name].within_3pt_count, metrics[name].count),
+    }))
+})
 
 function selectRun(runId) {
   store.fetchRunDetail(runId)
@@ -139,6 +152,18 @@ function formatDelta(delta, percentChange) {
   if (!Number.isFinite(next)) return '-'
   const pct = Number.isFinite(Number(percentChange)) ? ` (${Number(percentChange).toFixed(1)}%)` : ''
   return `${next > 0 ? '+' : ''}${next.toFixed(3)}${pct}`
+}
+
+function formatScoreDelta(value) {
+  const next = Number(value)
+  return Number.isFinite(next) ? `${next.toFixed(1)}pt` : '-'
+}
+
+function formatCount(value, total) {
+  const next = Number(value)
+  const totalCount = Number(total)
+  if (!Number.isFinite(next) || !Number.isFinite(totalCount) || totalCount <= 0) return '-'
+  return `${next}/${totalCount}`
 }
 </script>
 
@@ -249,6 +274,29 @@ function formatDelta(delta, percentChange) {
       </div>
     </section>
 
+    <section v-if="scoreDeltaRows.length" class="score-band">
+      <div class="section-heading">
+        <h2>점수 안정성</h2>
+        <span class="section-note">공통 submission {{ store.comparison?.score_delta?.common_submission_count || 0 }}건 기준</span>
+      </div>
+      <div class="score-table">
+        <div class="score-row score-head">
+          <span>Metric</span>
+          <span>Avg |delta|</span>
+          <span>Max |delta|</span>
+          <span>≤1pt</span>
+          <span>≤3pt</span>
+        </div>
+        <div v-for="row in scoreDeltaRows" :key="row.name" class="score-row">
+          <strong>{{ row.name }}</strong>
+          <span>{{ row.avgAbs }}</span>
+          <span>{{ row.maxAbs }}</span>
+          <span>{{ row.within1 }}</span>
+          <span>{{ row.within3 }}</span>
+        </div>
+      </div>
+    </section>
+
     <div class="detail-grid">
       <section class="detail-band">
         <div class="section-heading">
@@ -299,6 +347,7 @@ function formatDelta(delta, percentChange) {
 .progress-band,
 .run-list-band,
 .compare-band,
+.score-band,
 .detail-band {
   border-top: 1px solid var(--border-light);
   padding: var(--space-5) 0;
@@ -317,6 +366,11 @@ function formatDelta(delta, percentChange) {
 .section-heading h2 {
   margin: 0;
   font-size: var(--font-size-lg);
+}
+
+.section-note {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
 }
 
 .toolbar-band p {
@@ -485,6 +539,7 @@ function formatDelta(delta, percentChange) {
 .comparison-cell.bad strong { color: var(--color-danger); }
 
 .stage-table,
+.score-table,
 .outlier-list {
   display: grid;
   gap: var(--space-2);
@@ -492,6 +547,7 @@ function formatDelta(delta, percentChange) {
 }
 
 .stage-row,
+.score-row,
 .outlier-row {
   display: grid;
   grid-template-columns: 1.2fr repeat(3, minmax(78px, 1fr));
@@ -501,6 +557,16 @@ function formatDelta(delta, percentChange) {
   border-bottom: 1px solid var(--border-light);
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
+}
+
+.score-row {
+  grid-template-columns: 90px repeat(4, minmax(72px, 1fr));
+}
+
+.score-head {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
 }
 
 .outlier-row {
