@@ -9,49 +9,73 @@ const props = defineProps({
   size: { type: Number, default: 120 },
 })
 
-const radius = computed(() => props.size / 2 - 10)
-const circumference = computed(() => 2 * Math.PI * radius.value)
-const dash = computed(() => (props.score / props.maxScore) * circumference.value)
-const gap = computed(() => circumference.value - dash.value)
+const safeScore = computed(() => Math.max(0, Math.min(Number(props.score) || 0, props.maxScore)))
+const percent = computed(() => {
+  const max = Number(props.maxScore) || 100
+  return Math.max(0, Math.min((safeScore.value / max) * 100, 100))
+})
 </script>
 
 <template>
-  <div class="donut-wrap" :style="{ width: size + 'px', height: size + 'px' }">
-    <svg :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`">
-      <!-- Track -->
-      <circle
-        :cx="size / 2" :cy="size / 2" :r="radius"
-        fill="none" stroke="var(--color-gray-100)" :stroke-width="10"
-      />
-      <!-- Value arc -->
-      <circle
-        :cx="size / 2" :cy="size / 2" :r="radius"
-        fill="none" :stroke="color" :stroke-width="10"
-        stroke-linecap="round"
-        :stroke-dasharray="`${dash} ${gap}`"
-        stroke-dashoffset="0"
-        transform-origin="center"
-        :transform="`rotate(-90 ${size / 2} ${size / 2})`"
-        style="transition: stroke-dasharray 0.6s ease"
-      />
-      <!-- Score text -->
-      <text
-        :x="size / 2" :y="size / 2 - 4"
-        text-anchor="middle"
-        font-size="22" font-weight="800"
-        :fill="color"
-      >{{ score }}</text>
-      <text
-        v-if="label"
-        :x="size / 2" :y="size / 2 + 16"
-        text-anchor="middle"
-        font-size="10" font-weight="700"
-        fill="var(--text-muted)"
-      >{{ label }}</text>
-    </svg>
+  <div
+    class="donut-wrap"
+    :style="{ width: size + 'px', height: size + 'px' }"
+    role="img"
+    :aria-label="`${label || 'Score'} ${Math.round(safeScore)}점`"
+  >
+    <div
+      class="donut-ring"
+      :style="{ '--donut-color': color, '--donut-percent': `${percent}%` }"
+    ></div>
+    <div class="donut-center">
+      <strong :style="{ color }">{{ Math.round(safeScore) }}</strong>
+      <span v-if="label">{{ label }}</span>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.donut-wrap { position: relative; display: inline-flex; flex-direction: column; align-items: center; }
+.donut-wrap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.donut-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-full);
+  background: conic-gradient(var(--donut-color) var(--donut-percent), var(--color-gray-100) 0);
+  transition: background var(--transition-base);
+}
+
+.donut-ring::after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+}
+
+.donut-center {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  place-items: center;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.donut-center strong {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.donut-center span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
 </style>
