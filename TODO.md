@@ -44,6 +44,7 @@
 
 | 영역 | 우선순위 | 상태 | 작업 | 완료 기준 | 비고 |
 | --- | --- | --- | --- | --- | --- |
+| Backend/Ops | P2 | Ready | 운영 실행 시 refresh cookie에 `Secure` 플래그가 붙도록 `COOKIE_SECURE=true`를 주입합니다. | `docker-compose.prod.yml` 또는 운영 compose 환경에서 backend `COOKIE_SECURE=true`가 설정되고, `/api/v1/auth/login` 응답의 `refresh_token` 쿠키에 `Secure`가 포함됩니다. | 데모 공개 사이트 기준 최소 HTTPS 쿠키 강화 |
 
 ## 결정된 방향
 

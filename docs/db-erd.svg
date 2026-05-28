@@ -1,0 +1,202 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120" role="img" aria-labelledby="title desc">
+  <title id="title">AIC Web Database ERD</title>
+  <desc id="desc">Entity relationship diagram for AIC Web MySQL tables including users, classes, enrollments, assignments, submissions, metrics, analysis jobs, analysis runs, benchmark runs, benchmark items, and teacher feedback.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#475467"/>
+    </marker>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#101828" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .bg { fill: #f7f9fc; }
+      .title { font: 800 34px Arial, sans-serif; fill: #101828; }
+      .subtitle { font: 400 16px Arial, sans-serif; fill: #475467; }
+      .entity { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 12; filter: url(#shadow); }
+      .head { fill: #1f2937; rx: 12; }
+      .head-blue { fill: #1d4ed8; }
+      .head-green { fill: #15803d; }
+      .head-orange { fill: #c2410c; }
+      .head-purple { fill: #6d28d9; }
+      .head-red { fill: #b91c1c; }
+      .head-cyan { fill: #0e7490; }
+      .entity-title { font: 800 16px Arial, sans-serif; fill: #ffffff; letter-spacing: .2px; }
+      .field { font: 400 13px Arial, sans-serif; fill: #344054; }
+      .key { font: 800 12px Arial, sans-serif; fill: #101828; }
+      .rel { stroke: #475467; stroke-width: 2.1; fill: none; marker-end: url(#arrow); }
+      .rel-soft { stroke: #667085; stroke-width: 2; fill: none; marker-end: url(#arrow); stroke-dasharray: 8 6; }
+      .rel-label { font: 700 12px Arial, sans-serif; fill: #344054; }
+      .note { fill: #fffbeb; stroke: #f59e0b; stroke-width: 1.5; rx: 10; }
+      .note-text { font: 700 13px Arial, sans-serif; fill: #92400e; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="1120"/>
+  <text x="54" y="58" class="title">AIC Web Database ERD</text>
+  <text x="56" y="88" class="subtitle">Operational MySQL schema used by the FastAPI backend. Arrows point from child tables to parent tables through foreign keys.</text>
+
+  <g transform="translate(60 130)">
+    <rect class="entity" width="250" height="176"/>
+    <rect class="head head-blue" width="250" height="42"/>
+    <text x="18" y="27" class="entity-title">users</text>
+    <text x="18" y="67" class="field"><tspan class="key">PK</tspan> id</text>
+    <text x="18" y="91" class="field"><tspan class="key">UK</tspan> user_id_str</text>
+    <text x="18" y="115" class="field">role: student / teacher / admin</text>
+    <text x="18" y="139" class="field">name, email</text>
+    <text x="18" y="163" class="field">created_at, updated_at</text>
+  </g>
+
+  <g transform="translate(420 130)">
+    <rect class="entity" width="250" height="152"/>
+    <rect class="head head-green" width="250" height="42"/>
+    <text x="18" y="27" class="entity-title">classes</text>
+    <text x="18" y="67" class="field"><tspan class="key">PK</tspan> id</text>
+    <text x="18" y="91" class="field"><tspan class="key">UK</tspan> class_code</text>
+    <text x="18" y="115" class="field"><tspan class="key">FK</tspan> teacher_id -> users.id</text>
+    <text x="18" y="139" class="field">class_name, semester</text>
+  </g>
+
+  <g transform="translate(420 360)">
+    <rect class="entity" width="250" height="128"/>
+    <rect class="head head-green" width="250" height="42"/>
+    <text x="18" y="27" class="entity-title">class_enrollments</text>
+    <text x="18" y="67" class="field"><tspan class="key">PK</tspan> id</text>
+    <text x="18" y="91" class="field"><tspan class="key">FK</tspan> class_id -> classes.id</text>
+    <text x="18" y="115" class="field"><tspan class="key">FK</tspan> student_id -> users.id</text>
+  </g>
+
+  <g transform="translate(780 130)">
+    <rect class="entity" width="250" height="152"/>
+    <rect class="head head-orange" width="250" height="42"/>
+    <text x="18" y="27" class="entity-title">assignments</text>
+    <text x="18" y="67" class="field"><tspan class="key">PK</tspan> id</text>
+    <text x="18" y="91" class="field"><tspan class="key">FK</tspan> class_id -> classes.id</text>
+    <text x="18" y="115" class="field">title, description</text>
+    <text x="18" y="139" class="field">course_code, due_date</text>
+  </g>
+
+  <g transform="translate(780 360)">
+    <rect class="entity" width="250" height="176"/>
+    <rect class="head head-orange" width="250" height="42"/>
+    <text x="18" y="27" class="entity-title">submissions</text>
+    <text x="18" y="67" class="field"><tspan class="key">PK</tspan> id</text>
+    <text x="18" y="91" class="field"><tspan class="key">FK</tspan> assignment_id -> assignments.id</text>
+    <text x="18" y="115" class="field"><tspan class="key">FK</tspan> student_id -> users.id</text>
+    <text x="18" y="139" class="field">chatgpt_before, user_prompt</text>
+    <text x="18" y="163" class="field">essay, submitted_at</text>
+  </g>
+
+  <g transform="translate(1140 130)">
+    <rect class="entity" width="250" height="152"/>
+    <rect class="head head-purple" width="250" height="42"/>
+    <text x="18" y="27" class="entity-title">metrics</text>
+    <text x="18" y="67" class="field"><tspan class="key">PK</tspan> id</text>
+    <text x="18" y="91" class="field"><tspan class="key">FK/UK</tspan> submission_id</text>
+    <text x="18" y="115" class="field">pi, ui, oi, aic scores</text>
+    <text x="18" y="139" class="field">weights, raw metrics, backend</text>
+  </g>
+
+  <g transform="translate(1140 360)">
+    <rect class="entity" width="250" height="152"/>
+    <rect class="head head-purple" width="250" height="42"/>
+    <text x="18" y="27" class="entity-title">analysis_jobs</text>
+    <text x="18" y="67" class="field"><tspan class="key">PK</tspan> id</text>
+    <text x="18" y="91" class="field"><tspan class="key">UK</tspan> job_uuid</text>
+    <text x="18" y="115" class="field"><tspan class="key">FK</tspan> submission_id</text>
+    <text x="18" y="139" class="field">status, timestamps, error</text>
+  </g>
+
+  <g transform="translate(780 650)">
+    <rect class="entity" width="250" height="176"/>
+    <rect class="head head-red" width="250" height="42"/>
+    <text x="18" y="27" class="entity-title">analysis_runs</text>
+    <text x="18" y="67" class="field"><tspan class="key">PK</tspan> id</text>
+    <text x="18" y="91" class="field"><tspan class="key">UK</tspan> run_id, job_uuid</text>
+    <text x="18" y="115" class="field"><tspan class="key">FK</tspan> submission_id nullable</text>
+    <text x="18" y="139" class="field">runtime, data_health</text>
+    <text x="18" y="163" class="field">backend_info, pipeline_steps</text>
+  </g>
+
+  <g transform="translate(420 650)">
+    <rect class="entity" width="250" height="176"/>
+    <rect class="head head-cyan" width="250" height="42"/>
+    <text x="18" y="27" class="entity-title">benchmark_runs</text>
+    <text x="18" y="67" class="field"><tspan class="key">PK</tspan> id</text>
+    <text x="18" y="91" class="field"><tspan class="key">UK</tspan> run_id</text>
+    <text x="18" y="115" class="field">label, status, dataset_hash</text>
+    <text x="18" y="139" class="field">runtime aggregates</text>
+    <text x="18" y="163" class="field">stage_runtime_totals</text>
+  </g>
+
+  <g transform="translate(420 900)">
+    <rect class="entity" width="250" height="152"/>
+    <rect class="head head-cyan" width="250" height="42"/>
+    <text x="18" y="27" class="entity-title">benchmark_run_items</text>
+    <text x="18" y="67" class="field"><tspan class="key">PK</tspan> id</text>
+    <text x="18" y="91" class="field"><tspan class="key">FK</tspan> benchmark_run_id</text>
+    <text x="18" y="115" class="field"><tspan class="key">FK</tspan> submission_id nullable</text>
+    <text x="18" y="139" class="field">sample_index, metric_snapshot</text>
+  </g>
+
+  <g transform="translate(1140 650)">
+    <rect class="entity" width="250" height="176"/>
+    <rect class="head head-red" width="250" height="42"/>
+    <text x="18" y="27" class="entity-title">teacher_feedback</text>
+    <text x="18" y="67" class="field"><tspan class="key">PK</tspan> id</text>
+    <text x="18" y="91" class="field"><tspan class="key">FK</tspan> assignment_id</text>
+    <text x="18" y="115" class="field"><tspan class="key">FK</tspan> student_id -> users.id</text>
+    <text x="18" y="139" class="field"><tspan class="key">FK</tspan> teacher_id -> users.id</text>
+    <text x="18" y="163" class="field">content, timestamps</text>
+  </g>
+
+  <path class="rel" d="M420 205 L310 205"/>
+  <text x="336" y="190" class="rel-label">teacher_id</text>
+
+  <path class="rel" d="M545 360 L545 282"/>
+  <text x="558" y="327" class="rel-label">class_id</text>
+
+  <path class="rel" d="M420 424 C250 424 250 266 310 266"/>
+  <text x="246" y="348" class="rel-label">student_id</text>
+
+  <path class="rel" d="M780 205 L670 205"/>
+  <text x="704" y="190" class="rel-label">class_id</text>
+
+  <path class="rel" d="M905 360 L905 282"/>
+  <text x="918" y="327" class="rel-label">assignment_id</text>
+
+  <path class="rel" d="M780 464 C588 464 520 250 310 250"/>
+  <text x="552" y="404" class="rel-label">student_id</text>
+
+  <path class="rel" d="M1140 206 L1030 396"/>
+  <text x="1078" y="286" class="rel-label">submission_id 1:1</text>
+
+  <path class="rel" d="M1140 436 L1030 448"/>
+  <text x="1068" y="431" class="rel-label">submission_id</text>
+
+  <path class="rel" d="M905 650 L905 536"/>
+  <text x="918" y="600" class="rel-label">submission_id</text>
+
+  <path class="rel" d="M545 900 L545 826"/>
+  <text x="558" y="870" class="rel-label">benchmark_run_id</text>
+
+  <path class="rel" d="M670 976 C760 976 760 536 905 536"/>
+  <text x="700" y="930" class="rel-label">submission_id</text>
+
+  <path class="rel" d="M1140 702 L1030 220"/>
+  <text x="1044" y="622" class="rel-label">assignment_id</text>
+
+  <path class="rel-soft" d="M1140 734 C930 870 238 820 238 306"/>
+  <text x="1082" y="856" class="rel-label">student_id</text>
+
+  <path class="rel-soft" d="M1140 766 C1030 930 122 900 122 306"/>
+  <text x="1034" y="910" class="rel-label">teacher_id</text>
+
+  <rect x="60" y="900" width="280" height="152" class="note"/>
+  <text x="84" y="934" class="note-text">Key constraints</text>
+  <text x="84" y="960" class="field">submissions: unique assignment + student</text>
+  <text x="84" y="984" class="field">metrics: one row per submission</text>
+  <text x="84" y="1008" class="field">feedback: unique assignment + student</text>
+  <text x="84" y="1032" class="field">benchmark items: unique run + sample</text>
+
+  <text x="56" y="1090" class="subtitle">Source: init.sql and aic-backend/app/models/db_models.py</text>
+</svg>

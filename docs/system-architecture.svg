@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="940" viewBox="0 0 1400 940" role="img" aria-labelledby="title desc">
+  <title id="title">AIC Web System Architecture</title>
+  <desc id="desc">Architecture diagram showing public HTTPS entry through Caddy, Docker internal frontend, backend, pipeline, MySQL, PostgreSQL warehouse, ELT, and persistent volumes.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#344054"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#101828" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .bg { fill: #f7f9fc; }
+      .title { font: 800 34px Arial, sans-serif; fill: #101828; }
+      .subtitle { font: 400 16px Arial, sans-serif; fill: #475467; }
+      .group { fill: #ffffff; stroke: #d0d5dd; stroke-width: 2; rx: 18; filter: url(#shadow); }
+      .group-title { font: 700 18px Arial, sans-serif; fill: #344054; }
+      .box { fill: #ffffff; stroke: #98a2b3; stroke-width: 2; rx: 12; }
+      .public { fill: #e0f2fe; stroke: #0284c7; }
+      .frontend { fill: #ecfdf3; stroke: #16a34a; }
+      .backend { fill: #fff7ed; stroke: #f97316; }
+      .pipeline { fill: #f5f3ff; stroke: #7c3aed; }
+      .data { fill: #fef2f2; stroke: #dc2626; }
+      .warehouse { fill: #eef4ff; stroke: #4f46e5; }
+      .elt { fill: #f0f9ff; stroke: #0891b2; }
+      .volume { fill: #f8fafc; stroke: #64748b; stroke-dasharray: 7 5; }
+      .label { font: 700 17px Arial, sans-serif; fill: #101828; }
+      .small { font: 400 13px Arial, sans-serif; fill: #475467; }
+      .port { font: 700 13px Arial, sans-serif; fill: #344054; }
+      .edge { stroke: #344054; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .edge-soft { stroke: #667085; stroke-width: 2; fill: none; marker-end: url(#arrow); stroke-dasharray: 8 6; }
+      .edge-label { font: 700 12px Arial, sans-serif; fill: #344054; }
+      .note { fill: #fffbeb; stroke: #f59e0b; stroke-width: 1.5; rx: 10; }
+      .note-text { font: 700 13px Arial, sans-serif; fill: #92400e; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1400" height="940"/>
+  <text x="56" y="58" class="title">AIC Web System Architecture</text>
+  <text x="58" y="88" class="subtitle">Demo/production compose path: only Caddy publishes 80/443; application, analysis, and database services stay on the Docker internal network.</text>
+
+  <rect x="44" y="122" width="1312" height="732" class="group"/>
+  <text x="70" y="158" class="group-title">EC2 / Docker Host</text>
+
+  <rect x="76" y="198" width="210" height="92" class="box public"/>
+  <text x="104" y="234" class="label">User Browser</text>
+  <text x="104" y="260" class="small">HTTPS web client</text>
+
+  <rect x="350" y="178" width="230" height="132" class="box public"/>
+  <text x="382" y="218" class="label">Caddy</text>
+  <text x="382" y="244" class="small">TLS termination</text>
+  <text x="382" y="270" class="port">published: 80, 443</text>
+
+  <rect x="646" y="178" width="230" height="132" class="box frontend"/>
+  <text x="678" y="218" class="label">Frontend</text>
+  <text x="678" y="244" class="small">nginx + Vue dist</text>
+  <text x="678" y="270" class="port">internal: frontend:80</text>
+
+  <rect x="936" y="178" width="260" height="132" class="box backend"/>
+  <text x="968" y="218" class="label">Backend</text>
+  <text x="968" y="244" class="small">FastAPI /api/v1</text>
+  <text x="968" y="270" class="port">internal: backend:8000</text>
+
+  <rect x="936" y="394" width="260" height="132" class="box pipeline"/>
+  <text x="968" y="434" class="label">Pipeline</text>
+  <text x="968" y="460" class="small">SBERT / TF-IDF analysis</text>
+  <text x="968" y="486" class="port">internal: pipeline:9000</text>
+
+  <rect x="936" y="620" width="260" height="132" class="box data"/>
+  <text x="968" y="660" class="label">MySQL DB</text>
+  <text x="968" y="686" class="small">auth, submissions, jobs</text>
+  <text x="968" y="712" class="port">internal: db:3306</text>
+
+  <rect x="650" y="620" width="230" height="132" class="box warehouse"/>
+  <text x="682" y="660" class="label">Warehouse</text>
+  <text x="682" y="686" class="small">PostgreSQL marts</text>
+  <text x="682" y="712" class="port">internal: warehouse:5432</text>
+
+  <rect x="350" y="620" width="230" height="132" class="box elt"/>
+  <text x="382" y="660" class="label">ELT Job</text>
+  <text x="382" y="686" class="small">profile: tools</text>
+  <text x="382" y="712" class="small">one-shot transform/load</text>
+
+  <rect x="1218" y="394" width="120" height="82" class="box volume"/>
+  <text x="1237" y="427" class="small">model_cache</text>
+  <text x="1237" y="450" class="small">SBERT files</text>
+
+  <rect x="1218" y="620" width="120" height="82" class="box volume"/>
+  <text x="1237" y="653" class="small">mysql_data</text>
+  <text x="1237" y="676" class="small">volume</text>
+
+  <rect x="650" y="778" width="230" height="58" class="box volume"/>
+  <text x="694" y="813" class="small">warehouse_data volume</text>
+
+  <rect x="636" y="136" width="592" height="654" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="10 8" rx="16"/>
+  <text x="662" y="166" class="group-title">Docker network: aic_internal</text>
+
+  <path d="M 286 244 L 350 244" class="edge"/>
+  <text x="294" y="229" class="edge-label">HTTPS</text>
+
+  <path d="M 580 244 L 646 244" class="edge"/>
+  <text x="590" y="229" class="edge-label">reverse_proxy</text>
+
+  <path d="M 876 244 L 936 244" class="edge"/>
+  <text x="884" y="229" class="edge-label">/api/* proxy</text>
+
+  <path d="M 1066 310 L 1066 394" class="edge"/>
+  <text x="1080" y="357" class="edge-label">POST /analyze</text>
+
+  <path d="M 1066 310 C 1066 390 1066 540 1066 620" class="edge"/>
+  <text x="1082" y="555" class="edge-label">Async SQLAlchemy</text>
+
+  <path d="M 1196 460 L 1218 435" class="edge-soft"/>
+  <path d="M 1196 686 L 1218 661" class="edge-soft"/>
+  <path d="M 765 752 L 765 778" class="edge-soft"/>
+
+  <path d="M 580 686 L 650 686" class="edge"/>
+  <text x="590" y="671" class="edge-label">load marts</text>
+
+  <path d="M 580 686 C 706 590 815 686 936 686" class="edge"/>
+  <text x="624" y="621" class="edge-label">read source tables</text>
+
+  <rect x="78" y="342" width="448" height="118" class="note"/>
+  <text x="104" y="376" class="note-text">Service boundary</text>
+  <text x="104" y="402" class="small">Frontend calls backend under /api/v1 only.</text>
+  <text x="104" y="426" class="small">Backend owns persistence and calls pipeline via PIPELINE_URL.</text>
+
+  <rect x="78" y="488" width="448" height="118" class="note"/>
+  <text x="104" y="522" class="note-text">Port exposure</text>
+  <text x="104" y="548" class="small">Public: Caddy 80/443.</text>
+  <text x="104" y="572" class="small">Internal only: backend 8000, pipeline 9000, db 3306, warehouse 5432.</text>
+
+  <text x="58" y="898" class="subtitle">Source: docker-compose.yml, docker-compose.prod.yml, Caddyfile, aic-frontend/nginx.conf, backend/pipeline/ELT app configuration.</text>
+</svg>

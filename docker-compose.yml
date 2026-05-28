@@ -61,6 +61,7 @@ services:
     environment:
       DB_URL: mysql+aiomysql://aic_user:${MYSQL_PASSWORD}@db:3306/aic_db?charset=utf8mb4
       JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       PIPELINE_URL: http://pipeline:9000
     networks:
       - aic_internal
