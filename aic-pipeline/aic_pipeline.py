@@ -80,6 +80,31 @@ def minmax_norm(s: pd.Series, robust=False, percentile=(1, 99)) -> pd.Series:
     normalized = normalized.fillna(0.0)
     return normalized
 
+DEFAULT_SINGLE_ANALYSIS_NORMALIZATION_SCALES = {
+    "pi_depth_tokens": 100.0,
+    "pi_avg_sent_len_raw": 20.0,
+    "pi_ttr_raw": 0.5,
+    "ui_raw": 0.2,
+    "oi_raw": 0.125,
+}
+
+def saturating_ratio_norm(s: pd.Series, scale: float) -> pd.Series:
+    """
+    Saturating ratio 정규화 (0-1)
+
+    단건 분석처럼 min-max 기준을 만들 수 없는 입력에서 사용한다.
+    normalized = value / (value + scale)
+    """
+    s = s.astype(float).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    safe_scale = float(scale) if scale and scale > 0 else 1.0
+    normalized = s.clip(lower=0.0) / (s.clip(lower=0.0) + safe_scale)
+    return normalized.clip(0.0, 1.0).fillna(0.0)
+
+def normalize_metric(s: pd.Series, method: str = "minmax", scale: float | None = None) -> pd.Series:
+    if method == "saturating_ratio":
+        return saturating_ratio_norm(s, scale if scale is not None else 1.0)
+    return minmax_norm(s)
+
 def to_num(x):
     """안전한 숫자 변환"""
     try:
@@ -262,7 +287,13 @@ class EmbeddingBackend:
 # --------------------------
 # PI (Participation Index)
 # --------------------------
-def compute_PI(df: pd.DataFrame, keywords_iterable, weights=[0.4, 0.3, 0.3]) -> pd.DataFrame:
+def compute_PI(
+    df: pd.DataFrame,
+    keywords_iterable,
+    weights=[0.4, 0.3, 0.3],
+    normalization: str = "minmax",
+    normalization_scales: dict | None = None,
+) -> pd.DataFrame:
     """
     참여 지표 계산
     
@@ -305,13 +336,27 @@ def compute_PI(df: pd.DataFrame, keywords_iterable, weights=[0.4, 0.3, 0.3]) -> 
     df["pi_avg_sent_len_raw"] = df["user"].apply(avg_sent_len)
     df["pi_ttr_raw"] = df["user"].apply(ttr)
     
+    scales = {**DEFAULT_SINGLE_ANALYSIS_NORMALIZATION_SCALES, **(normalization_scales or {})}
+
     # 정규화
-    df["pi_avg_sent_len"] = minmax_norm(df["pi_avg_sent_len_raw"])
-    df["pi_ttr"] = minmax_norm(df["pi_ttr_raw"])
+    df["pi_avg_sent_len"] = normalize_metric(
+        df["pi_avg_sent_len_raw"],
+        method=normalization,
+        scale=scales["pi_avg_sent_len_raw"],
+    )
+    df["pi_ttr"] = normalize_metric(
+        df["pi_ttr_raw"],
+        method=normalization,
+        scale=scales["pi_ttr_raw"],
+    )
     df["pi_complexity"] = 0.5 * df["pi_avg_sent_len"] + 0.5 * df["pi_ttr"]
     
     # Depth 정규화
-    df["pi_depth_norm"] = minmax_norm(df["pi_depth_tokens"])
+    df["pi_depth_norm"] = normalize_metric(
+        df["pi_depth_tokens"],
+        method=normalization,
+        scale=scales["pi_depth_tokens"],
+    )
     
     # PI 최종 계산 (가중 합)
     w1, w2, w3 = weights
@@ -343,6 +388,11 @@ def compute_UI_OI(df: pd.DataFrame, backend: EmbeddingBackend, cfg) -> pd.DataFr
     alpha = cfg["ui_oi"].get("topic_score_alpha", 1.0)
     beta = cfg["ui_oi"].get("topic_score_beta", 1.0)
     min_course_samples = cfg["ui_oi"].get("min_course_samples", 3)
+    normalization = cfg["ui_oi"].get("normalization", "minmax")
+    scales = {
+        **DEFAULT_SINGLE_ANALYSIS_NORMALIZATION_SCALES,
+        **cfg["ui_oi"].get("normalization_scales", {}),
+    }
     
     timings = {}
 
@@ -353,7 +403,14 @@ def compute_UI_OI(df: pd.DataFrame, backend: EmbeddingBackend, cfg) -> pd.DataFr
     # 백엔드 fit
     embedding_start = time.perf_counter()
     corpus = before + essay
-    backend.fit(corpus)
+    reuse_fitted_sbert = cfg["ui_oi"].get("reuse_fitted_sbert", False)
+    should_fit_backend = not (
+        reuse_fitted_sbert
+        and backend.kind == "sbert"
+        and backend.model is not None
+    )
+    if should_fit_backend:
+        backend.fit(corpus)
     
     # 임베딩 변환
     E_before = backend.transform(before)
@@ -421,14 +478,14 @@ def compute_UI_OI(df: pd.DataFrame, backend: EmbeddingBackend, cfg) -> pd.DataFr
     
     # === 4) UI 계산 (문서 기준) ===
     # UI = (Distance × NewInfo) × TopicScore^α
-    UI_raw = df["ui_distance"] * df["ui_newinfo_ratio"] * (df["topic_score"] ** alpha)
-    df["UI"] = minmax_norm(UI_raw)
+    df["ui_raw"] = df["ui_distance"] * df["ui_newinfo_ratio"] * (df["topic_score"] ** alpha)
+    df["UI"] = normalize_metric(df["ui_raw"], method=normalization, scale=scales["ui_raw"])
     
     # === 5) OI 계산 (문서 기준) ===
     # OI = (1 - TopicScore) × TopicScore^β
     # 의미: 전형성에서 벗어났지만(1-TS), 완전히 엉뚱하지는 않음(TS^β)
-    OI_raw = (1.0 - df["topic_score"]) * (df["topic_score"] ** beta)
-    df["OI"] = minmax_norm(OI_raw)
+    df["oi_raw"] = (1.0 - df["topic_score"]) * (df["topic_score"] ** beta)
+    df["OI"] = normalize_metric(df["oi_raw"], method=normalization, scale=scales["oi_raw"])
 
     timings["UI/OI"] = time.perf_counter() - ui_oi_start
     df.attrs["pipeline_timings"] = {

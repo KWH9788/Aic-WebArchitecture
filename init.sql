@@ -1,13 +1,14 @@
 ﻿CREATE DATABASE IF NOT EXISTS aic_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE aic_db;
+SET NAMES utf8mb4;
 
 CREATE TABLE users (
     id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id_str   VARCHAR(64)  NOT NULL UNIQUE,
     password_hash VARCHAR(256) NOT NULL,
     role          ENUM('student','teacher','admin') NOT NULL,
-    name          VARCHAR(128) NOT NULL,
-    email         VARCHAR(256),
+    name          TEXT NOT NULL,
+    email         TEXT,
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_role (role)

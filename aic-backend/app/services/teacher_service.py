@@ -152,7 +152,7 @@ async def get_class_analyzed_metric_rows(class_id: int, db: AsyncSession):
         .where(Assignment.class_id == class_id)
         .where(User.role == "student")
         .where(Metric.aic_score.is_not(None))
-        .order_by(Assignment.created_at.asc(), Assignment.id.asc(), User.name.asc())
+        .order_by(Assignment.created_at.asc(), Assignment.id.asc(), User.user_id_str.asc())
     )
     return result.all()
 

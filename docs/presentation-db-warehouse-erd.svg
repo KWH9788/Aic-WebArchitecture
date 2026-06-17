@@ -1,0 +1,192 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Presentation ERD for AIC Web Operational DB and Warehouse</title>
+  <desc id="desc">Slide-friendly ERD showing AIC Web operational MySQL core entities and PostgreSQL warehouse raw, staging, mart flow.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <filter id="shadow" x="-8%" y="-8%" width="116%" height="124%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0f172a" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 800 42px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 20px Arial, sans-serif; fill: #475569; }
+      .panel { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 28; filter: url(#shadow); }
+      .panel-title { font: 800 26px Arial, sans-serif; fill: #0f172a; }
+      .panel-subtitle { font: 500 16px Arial, sans-serif; fill: #64748b; }
+      .table { fill: #ffffff; stroke-width: 2.5; rx: 16; filter: url(#shadow); }
+      .op { stroke: #2563eb; }
+      .wh { stroke: #059669; }
+      .support { stroke: #f97316; }
+      .raw { stroke: #0ea5e9; }
+      .stg { stroke: #8b5cf6; }
+      .mart { stroke: #16a34a; }
+      .history { stroke: #f59e0b; }
+      .head-op { fill: #2563eb; }
+      .head-support { fill: #f97316; }
+      .head-raw { fill: #0ea5e9; }
+      .head-stg { fill: #8b5cf6; }
+      .head-mart { fill: #16a34a; }
+      .head-history { fill: #f59e0b; }
+      .table-title { font: 800 22px Arial, sans-serif; fill: #ffffff; }
+      .field { font: 500 16px Arial, sans-serif; fill: #334155; }
+      .field-strong { font: 800 15px Arial, sans-serif; fill: #0f172a; }
+      .edge { stroke: #334155; stroke-width: 2.7; fill: none; marker-end: url(#arrow); }
+      .edge-soft { stroke: #64748b; stroke-width: 2.3; fill: none; marker-end: url(#arrow); stroke-dasharray: 10 8; }
+      .edge-label { font: 800 15px Arial, sans-serif; fill: #334155; }
+      .elt { fill: #fff7ed; stroke: #f97316; stroke-width: 3; rx: 22; filter: url(#shadow); }
+      .elt-title { font: 800 24px Arial, sans-serif; fill: #9a3412; }
+      .elt-text { font: 600 16px Arial, sans-serif; fill: #9a3412; }
+      .legend { fill: #f1f5f9; stroke: #cbd5e1; stroke-width: 1.5; rx: 14; }
+      .legend-text { font: 700 16px Arial, sans-serif; fill: #334155; }
+      .badge { font: 800 13px Arial, sans-serif; fill: #ffffff; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1920" height="1080"/>
+  <text x="58" y="70" class="title">AIC Web DB &amp; Warehouse ERD</text>
+  <text x="60" y="106" class="subtitle">Presentation view: operational MySQL stores app workflows; ELT reshapes core data into PostgreSQL raw, staging, and mart tables.</text>
+
+  <rect x="52" y="150" width="860" height="812" class="panel"/>
+  <text x="88" y="196" class="panel-title">Operational MySQL · aic_db</text>
+  <text x="88" y="224" class="panel-subtitle">Backend-owned transactional schema</text>
+
+  <rect x="100" y="272" width="220" height="130" class="table op"/>
+  <rect x="100" y="272" width="220" height="42" class="head-op" rx="16"/>
+  <text x="122" y="300" class="table-title">users</text>
+  <text x="122" y="340" class="field"><tspan class="field-strong">PK</tspan> id</text>
+  <text x="122" y="366" class="field">role, name, email</text>
+  <text x="122" y="392" class="field">student / teacher / admin</text>
+
+  <rect x="390" y="272" width="220" height="130" class="table op"/>
+  <rect x="390" y="272" width="220" height="42" class="head-op" rx="16"/>
+  <text x="412" y="300" class="table-title">classes</text>
+  <text x="412" y="340" class="field"><tspan class="field-strong">PK</tspan> id</text>
+  <text x="412" y="366" class="field"><tspan class="field-strong">FK</tspan> teacher_id</text>
+  <text x="412" y="392" class="field">class_code, semester</text>
+
+  <rect x="100" y="478" width="220" height="116" class="table op"/>
+  <rect x="100" y="478" width="220" height="42" class="head-op" rx="16"/>
+  <text x="122" y="506" class="table-title">enrollments</text>
+  <text x="122" y="546" class="field">class_id + student_id</text>
+  <text x="122" y="572" class="field">N:M bridge</text>
+
+  <rect x="390" y="478" width="220" height="130" class="table op"/>
+  <rect x="390" y="478" width="220" height="42" class="head-op" rx="16"/>
+  <text x="412" y="506" class="table-title">assignments</text>
+  <text x="412" y="546" class="field"><tspan class="field-strong">FK</tspan> class_id</text>
+  <text x="412" y="572" class="field">title, due_date</text>
+  <text x="412" y="598" class="field">course_code</text>
+
+  <rect x="680" y="478" width="220" height="130" class="table op"/>
+  <rect x="680" y="478" width="220" height="42" class="head-op" rx="16"/>
+  <text x="702" y="506" class="table-title">submissions</text>
+  <text x="702" y="546" class="field"><tspan class="field-strong">FK</tspan> assignment_id</text>
+  <text x="702" y="572" class="field"><tspan class="field-strong">FK</tspan> student_id</text>
+  <text x="702" y="598" class="field">essay + prompt</text>
+
+  <rect x="680" y="684" width="220" height="130" class="table op"/>
+  <rect x="680" y="684" width="220" height="42" class="head-op" rx="16"/>
+  <text x="702" y="712" class="table-title">metrics</text>
+  <text x="702" y="752" class="field"><tspan class="field-strong">1:1</tspan> submission</text>
+  <text x="702" y="778" class="field">PI / UI / OI</text>
+  <text x="702" y="804" class="field">AIC score</text>
+
+  <rect x="100" y="684" width="510" height="130" class="table support"/>
+  <rect x="100" y="684" width="510" height="42" class="head-support" rx="16"/>
+  <text x="122" y="712" class="table-title">workflow &amp; monitoring tables</text>
+  <text x="122" y="752" class="field">analysis_jobs: async job status</text>
+  <text x="122" y="778" class="field">analysis_runs: admin quality snapshots</text>
+  <text x="122" y="804" class="field">teacher_feedback, benchmark_runs, benchmark_run_items</text>
+
+  <path d="M320 337 L390 337" class="edge"/>
+  <text x="332" y="322" class="edge-label">teaches</text>
+  <path d="M210 402 L210 478" class="edge"/>
+  <text x="224" y="450" class="edge-label">student</text>
+  <path d="M390 536 L320 536" class="edge"/>
+  <text x="332" y="520" class="edge-label">class</text>
+  <path d="M500 402 L500 478" class="edge"/>
+  <text x="514" y="450" class="edge-label">has</text>
+  <path d="M610 543 L680 543" class="edge"/>
+  <text x="624" y="528" class="edge-label">receives</text>
+  <path d="M790 608 L790 684" class="edge"/>
+  <text x="804" y="654" class="edge-label">scored as</text>
+  <path d="M680 570 C560 632 500 640 500 684" class="edge-soft"/>
+  <text x="520" y="642" class="edge-label">job / feedback / benchmark</text>
+  <path d="M320 348 C612 380 658 460 680 540" class="edge-soft"/>
+  <text x="468" y="380" class="edge-label">submits</text>
+
+  <rect x="952" y="438" width="170" height="162" class="elt"/>
+  <text x="987" y="488" class="elt-title">ELT</text>
+  <text x="982" y="522" class="elt-text">extract</text>
+  <text x="980" y="548" class="elt-text">transform</text>
+  <text x="998" y="574" class="elt-text">load</text>
+
+  <path d="M900 544 L952 520" class="edge"/>
+  <text x="898" y="505" class="edge-label">core 5 tables</text>
+
+  <rect x="1160" y="150" width="708" height="812" class="panel"/>
+  <text x="1196" y="196" class="panel-title">PostgreSQL Warehouse · aic_warehouse</text>
+  <text x="1196" y="224" class="panel-subtitle">Analytics-oriented raw, staging, mart layers</text>
+
+  <rect x="1210" y="274" width="250" height="230" class="table raw"/>
+  <rect x="1210" y="274" width="250" height="46" class="head-raw" rx="16"/>
+  <text x="1234" y="304" class="table-title">RAW layer</text>
+  <text x="1234" y="346" class="field">raw_users</text>
+  <text x="1234" y="374" class="field">raw_classes</text>
+  <text x="1234" y="402" class="field">raw_assignments</text>
+  <text x="1234" y="430" class="field">raw_submissions</text>
+  <text x="1234" y="458" class="field">raw_metrics</text>
+  <text x="1234" y="486" class="field">source_* IDs preserved</text>
+
+  <rect x="1548" y="308" width="250" height="162" class="table stg"/>
+  <rect x="1548" y="308" width="250" height="46" class="head-stg" rx="16"/>
+  <text x="1572" y="338" class="table-title">STAGING</text>
+  <text x="1572" y="384" class="field">stg_submission_metrics</text>
+  <text x="1572" y="412" class="field">joined class + assignment</text>
+  <text x="1572" y="440" class="field">student + teacher + scores</text>
+
+  <rect x="1210" y="622" width="250" height="162" class="table mart"/>
+  <rect x="1210" y="622" width="250" height="46" class="head-mart" rx="16"/>
+  <text x="1234" y="652" class="table-title">Student Mart</text>
+  <text x="1234" y="698" class="field">mart_student_assignment</text>
+  <text x="1234" y="726" class="field">per student + assignment</text>
+  <text x="1234" y="754" class="field">PI/UI/OI/AIC</text>
+
+  <rect x="1548" y="568" width="250" height="130" class="table mart"/>
+  <rect x="1548" y="568" width="250" height="46" class="head-mart" rx="16"/>
+  <text x="1572" y="598" class="table-title">Assignment Mart</text>
+  <text x="1572" y="644" class="field">mart_assignment_summary</text>
+  <text x="1572" y="672" class="field">counts + avg scores</text>
+
+  <rect x="1548" y="748" width="250" height="130" class="table mart"/>
+  <rect x="1548" y="748" width="250" height="46" class="head-mart" rx="16"/>
+  <text x="1572" y="778" class="table-title">Class Mart</text>
+  <text x="1572" y="824" class="field">mart_class_summary</text>
+  <text x="1572" y="852" class="field">class-level averages</text>
+
+  <rect x="1210" y="836" width="250" height="86" class="table history"/>
+  <rect x="1210" y="836" width="250" height="38" class="head-history" rx="16"/>
+  <text x="1234" y="862" class="table-title">elt_run_history</text>
+  <text x="1234" y="902" class="field">status, counts, validation</text>
+
+  <path d="M1122 520 L1210 392" class="edge"/>
+  <text x="1134" y="438" class="edge-label">upsert raw</text>
+  <path d="M1460 389 L1548 389" class="edge"/>
+  <text x="1478" y="374" class="edge-label">join</text>
+  <path d="M1673 470 C1673 534 1430 548 1335 622" class="edge"/>
+  <text x="1430" y="548" class="edge-label">detail mart</text>
+  <path d="M1673 470 L1673 568" class="edge"/>
+  <text x="1688" y="528" class="edge-label">assignment agg</text>
+  <path d="M1673 470 C1818 548 1818 704 1673 748" class="edge"/>
+  <text x="1730" y="650" class="edge-label">class agg</text>
+  <path d="M1122 556 C1180 650 1220 760 1270 836" class="edge-soft"/>
+  <text x="1126" y="742" class="edge-label">record run</text>
+
+  <rect x="60" y="992" width="1800" height="54" class="legend"/>
+  <text x="88" y="1027" class="legend-text">Read left to right:</text>
+  <text x="244" y="1027" class="legend-text">Operational DB captures application events</text>
+  <text x="600" y="1027" class="legend-text">→ ELT copies and reshapes core tables</text>
+  <text x="944" y="1027" class="legend-text">→ Warehouse serves dashboard/analytics-ready marts</text>
+</svg>

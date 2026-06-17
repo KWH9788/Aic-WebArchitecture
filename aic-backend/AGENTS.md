@@ -31,6 +31,7 @@ This service is the authenticated FastAPI backend for users, classes, submission
 ## Local Golden Rules
 
 - Do keep JWT validation strict and environment-driven.
+- Do keep `ENCRYPTION_KEY` environment-driven; never commit real encryption keys or weaken encrypted PII handling.
 - Do return schema-shaped responses rather than raw ORM objects unless an existing router pattern already handles serialization.
 - Do preserve async boundaries when calling database and pipeline code.
 - Do keep metric score names aligned with pipeline response fields and frontend chart expectations.

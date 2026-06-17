@@ -16,6 +16,10 @@ const auth = useAuthStore()
 const teacherStore = useTeacherStore()
 
 const role = computed(() => auth.user?.role)
+const displayUserName = computed(() => {
+  if (role.value === 'admin') return '시스템 관리자'
+  return auth.user?.name || '사용자'
+})
 const studentNav = [
   { label: 'Dashboard', path: '/student/dashboard', icon: 'grid' },
   { label: 'Assignment Detail', path: '/student/assignments', icon: 'file' },
@@ -118,9 +122,9 @@ async function handleLogout() {
       </RouterLink>
     </nav>
     <div class="sidebar-user">
-      <div class="user-avatar">{{ (auth.user?.name || 'A').slice(0, 1) }}</div>
+      <div class="user-avatar">{{ displayUserName.slice(0, 1) }}</div>
       <div class="user-info">
-        <div class="user-name">{{ auth.user?.name || '사용자' }}</div>
+        <div class="user-name">{{ displayUserName }}</div>
         <div class="user-role">{{ role === 'admin' ? 'System Admin' : role === 'teacher' ? 'Teacher' : `Student · ${auth.user?.class_code || 'CS101'}` }}</div>
       </div>
       <button class="logout-btn" title="로그아웃" aria-label="로그아웃" @click.stop="handleLogout">

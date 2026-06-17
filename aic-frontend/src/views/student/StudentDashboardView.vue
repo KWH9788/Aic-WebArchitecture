@@ -251,7 +251,12 @@ const barConfig = computed(() => {
             <span class="status-badge" :class="statusClass">{{ statusText }}</span>
           </div>
           <div class="card-body score-card-body">
-            <DonutChart :score="latestMetrics.aic || 0" color="var(--color-aic)" label="AIC Score" :size="160" />
+            <DonutChart
+              :score="latestMetrics.aic || 0"
+              color="var(--color-aic)"
+              label="AIC Score"
+              :size="160"
+            />
             <div class="metric-chip-grid">
               <div
                 v-for="m in subMetrics"

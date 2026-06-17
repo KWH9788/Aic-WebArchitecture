@@ -18,6 +18,7 @@
 
 - Do not commit secrets, real credentials, JWT secrets, database passwords, generated model caches, or local `.env` files.
 - Keep `JWT_SECRET` environment-driven and at least 32 characters; never weaken the validator in `aic-backend/app/config.py`.
+- Keep `ENCRYPTION_KEY` environment-driven; never commit real field-encryption keys or disable encrypted PII handling.
 - Preserve the service boundary: frontend calls backend under `/api/v1`; backend calls pipeline through `PIPELINE_URL`; frontend must not call pipeline directly.
 - Preserve async database access in backend code; use `AsyncSession`, `await`, and SQLAlchemy async APIs consistently.
 - Keep the pipeline CPU-oriented unless the deployment image and infrastructure are intentionally changed.
